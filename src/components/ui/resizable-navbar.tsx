@@ -25,10 +25,16 @@ interface NavBodyProps {
 interface NavItemsProps {
     items: {
         name: string;
-        link: string;
+        link?: string;  // 主项可以没有链接，只有子菜单
+        subItems?: {
+            name: string;
+            link: string;
+            onClick?: () => void;  // 子项可以有自己的点击处理
+        }[];
+        onClick?: () => void;  // 主项点击处理
     }[];
     className?: string;
-    onItemClick?: () => void;
+    onItemClick?: () => void;  // 全局点击处理（可用于关闭移动菜单）
 }
 
 interface MobileNavProps {
@@ -115,31 +121,138 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
 
 export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
     const [hovered, setHovered] = useState<number | null>(null);
+    const [activeSubmenu, setActiveSubmenu] = useState<number | null>(null);
+    const [touchSubmenu, setTouchSubmenu] = useState<number | null>(null);
+
+    // 处理子项点击
+    const handleSubItemClick = (itemClick?: () => void) => {
+        itemClick?.(); // 执行子项特定的点击处理
+        onItemClick?.(); // 执行全局点击处理（如关闭移动菜单）
+        setActiveSubmenu(null); // 关闭子菜单
+        setTouchSubmenu(null);
+    };
+
+    // 处理主项点击
+    const handleItemClick = (item: {
+        link?: string;
+        onClick?: () => void;
+        subItems?: any[];
+    }) => {
+        if (item.subItems) {
+            // 如果是移动端触摸设备
+            if ('ontouchstart' in window) {
+                setTouchSubmenu(touchSubmenu === null ? 0 : null);
+            }
+            return;
+        }
+        
+        item.onClick?.();
+        onItemClick?.();
+    };
 
     return (
         <motion.div
-            onMouseLeave={() => setHovered(null)}
+            onMouseLeave={() => {
+                setHovered(null);
+                setActiveSubmenu(null);
+            }}
             className={cn(
                 "absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
                 className,
             )}
         >
             {items.map((item, idx) => (
-                <a
-                    onMouseEnter={() => setHovered(idx)}
-                    onClick={onItemClick}
-                    className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300"
-                    key={`link-${idx}`}
-                    href={item.link}
+                <div 
+                    key={`nav-item-${idx}`}
+                    className="relative"
+                    onMouseEnter={() => {
+                        setHovered(idx);
+                        if (item.subItems) setActiveSubmenu(idx);
+                    }}
                 >
-                    {hovered === idx && (
+                    <a
+                        onClick={(e) => {
+                            e.preventDefault();
+                            handleItemClick(item);
+                        }}
+                        className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300 block cursor-pointer"
+                        href={item.link || '#'}
+                    >
+                        {hovered === idx && !item.subItems && (
+                            <motion.div
+                                layoutId="hovered"
+                                className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
+                            />
+                        )}
+                        <span className="relative z-20 flex items-center">
+                            {item.name}
+                            {item.subItems && (
+                                <svg 
+                                    className="ml-1 h-4 w-4"
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor"
+                                >
+                                    <path 
+                                        strokeLinecap="round" 
+                                        strokeLinejoin="round" 
+                                        strokeWidth={2} 
+                                        d="M19 9l-7 7-7-7" 
+                                    />
+                                </svg>
+                            )}
+                        </span>
+                    </a>
+
+                    {/* 桌面端悬停显示的子菜单 */}
+                    {item.subItems && activeSubmenu === idx && (
                         <motion.div
-                            layoutId="hovered"
-                            className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
-                        />
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute left-0 top-full mt-1 w-48 rounded-md bg-white shadow-lg dark:bg-neutral-800 z-50"
+                        >
+                            <div className="py-1">
+                                {item.subItems.map((subItem, subIdx) => (
+                                    <a
+                                        key={`sub-item-${subIdx}`}
+                                        href={subItem.link}
+                                        className="block px-4 py-2 text-sm text-neutral-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleSubItemClick(subItem.onClick);
+                                            window.location.href = subItem.link; // 实际导航
+                                        }}
+                                    >
+                                        {subItem.name}
+                                    </a>
+                                ))}
+                            </div>
+                        </motion.div>
                     )}
-                    <span className="relative z-20">{item.name}</span>
-                </a>
+
+                    {/* 移动端点击显示的子菜单 */}
+                    {item.subItems && touchSubmenu !== null && (
+                        <div className="lg:hidden absolute left-0 top-full mt-1 w-48 rounded-md bg-white shadow-lg dark:bg-neutral-800 z-50">
+                            <div className="py-1">
+                                {item.subItems.map((subItem, subIdx) => (
+                                    <a
+                                        key={`mobile-sub-item-${subIdx}`}
+                                        href={subItem.link}
+                                        className="block px-4 py-2 text-sm text-neutral-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleSubItemClick(subItem.onClick);
+                                            window.location.href = subItem.link;
+                                        }}
+                                    >
+                                        {subItem.name}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             ))}
         </motion.div>
     );
