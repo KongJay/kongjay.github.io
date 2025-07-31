@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mdx-js/react": "^3.1.0",
     "@tabler/icons-react": "^3.34.0",
     "@tsparticles/engine": "^3.8.1",
     "@tsparticles/react": "^3.0.0",
@@ -27,7 +28,11 @@
     "react-awesome-reveal": "^4.3.1",
     "react-d3-tree": "^3.6.6",
     "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^15.6.1",
+    "react-toc": "^3.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.3.1",
     "three": "^0.178.0"
   },
